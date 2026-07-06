@@ -1,0 +1,114 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  ORGANIZER
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PackageType {
+  basic
+  premium
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  password     String
+  firstName    String
+  lastName     String
+  phone        String   @default("")
+  role         Role     @default(ORGANIZER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  weddings Wedding[]
+  orders   Order[]
+
+  @@map("users")
+}
+
+model Wedding {
+  id           String      @id @default(cuid())
+  groomName    String
+  brideName    String
+  weddingDate  DateTime
+  venue        String      @default("")
+  slug         String      @unique
+  packageType  PackageType @default(basic)
+  isActive     Boolean     @default(true)
+  viewCount    Int         @default(0)
+  userId       String
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  user   User    @relation(fields: [userId], references: [id])
+  photos Photo[]
+  orders Order[]
+
+  @@map("weddings")
+}
+
+model Photo {
+  id               String   @id @default(cuid())
+  cloudStoragePath String
+  fileName         String
+  contentType      String
+  isPublic         Boolean  @default(true)
+  uploaderName     String   @default("")
+  weddingId        String
+  createdAt        DateTime @default(now())
+
+  wedding Wedding @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+
+  @@map("photos")
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  totalAmount  Float       @default(0)
+  status      OrderStatus @default(PENDING)
+  notes       String?
+  userId      String
+  weddingId   String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id])
+  wedding Wedding @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+
+  @@map("orders")
+}
+
+model Setting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+
+  @@map("settings")
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  subject   String   @default("Genel")
+  message   String
+  createdAt DateTime @default(now())
+
+  @@map("contact_messages")
+}

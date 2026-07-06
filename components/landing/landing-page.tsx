@@ -1,0 +1,267 @@
+'use client';
+
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { useSession } from 'next-auth/react';
+import Link from 'next/link';
+import { Heart, Camera, QrCode, Upload, Users, Image as ImageIcon, Send, Phone, ChevronRight, Star, CheckCircle, Instagram, ArrowRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { toast } from 'sonner';
+
+const fadeInUp = {
+  hidden: { opacity: 0, y: 30 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6 } },
+};
+
+const stagger = {
+  visible: { transition: { staggerChildren: 0.15 } },
+};
+
+export function LandingPage() {
+  const { data: session } = useSession() || {};
+  const [contactForm, setContactForm] = useState({ name: '', email: '', subject: '', message: '' });
+  const [sending, setSending] = useState(false);
+
+  const handleContact = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSending(true);
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(contactForm),
+      });
+      if (res.ok) {
+        toast.success('Mesajınız başarıyla gönderildi!');
+        setContactForm({ name: '', email: '', subject: '', message: '' });
+      } else {
+        toast.error('Mesaj gönderilemedi');
+      }
+    } catch {
+      toast.error('Bir hata oluştu');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50">
+        <div className="max-w-[1200px] mx-auto px-4 h-16 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2">
+            <Heart className="h-6 w-6 text-primary fill-primary" />
+            <span className="font-display text-xl font-bold tracking-tight">DüğünKare</span>
+          </Link>
+          <nav className="hidden md:flex items-center gap-6">
+            <a href="#nasil-calisir" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Nasıl Çalışır?</a>
+            <a href="#paketler" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Paketler</a>
+            <a href="#iletisim" className="text-sm text-muted-foreground hover:text-foreground transition-colors">İletişim</a>
+          </nav>
+          <div className="flex items-center gap-3">
+            {session ? (
+              <Link href="/dashboard">
+                <Button>Panelim <ChevronRight className="h-4 w-4 ml-1" /></Button>
+              </Link>
+            ) : (
+              <>
+                <Link href="/giris"><Button variant="ghost" size="sm">Giriş Yap</Button></Link>
+                <Link href="/kayit"><Button size="sm">Kayıt Ol</Button></Link>
+              </>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* Hero */}
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-secondary/30" />
+        <div className="max-w-[1200px] mx-auto px-4 py-24 md:py-32 relative">
+          <motion.div initial="hidden" animate="visible" variants={stagger} className="text-center max-w-3xl mx-auto">
+            <motion.div variants={fadeInUp} className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-1.5 rounded-full text-sm font-medium mb-6">
+              <Camera className="h-4 w-4" />
+              Düğün fotoğraf paylaşımında yeni nesil
+            </motion.div>
+            <motion.h1 variants={fadeInUp} className="font-display text-4xl md:text-6xl font-bold tracking-tight mb-6">
+              Düğününüzde Çekilen Tüm Fotoğraflar <span className="text-primary">Tek Yerde</span>
+            </motion.h1>
+            <motion.p variants={fadeInUp} className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
+              QR kod ile misafirleriniz düğün fotoğraflarını kolayca yüklesin. Tüm anılarınız dijital bir galeride toplansın.
+            </motion.p>
+            <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link href="/kayit">
+                <Button size="lg" className="text-base px-8">
+                  Hemen Başla <ArrowRight className="h-5 w-5 ml-2" />
+                </Button>
+              </Link>
+              <a href="#nasil-calisir">
+                <Button variant="outline" size="lg" className="text-base px-8">
+                  Nasıl Çalışır?
+                </Button>
+              </a>
+            </motion.div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section id="nasil-calisir" className="py-20 bg-secondary/30">
+        <div className="max-w-[1200px] mx-auto px-4">
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger} className="text-center mb-16">
+            <motion.h2 variants={fadeInUp} className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-4">Nasıl Çalışır?</motion.h2>
+            <motion.p variants={fadeInUp} className="text-muted-foreground max-w-xl mx-auto">Sadece 3 adımda düğün fotoğraflarınızı toplayın</motion.p>
+          </motion.div>
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger} className="grid md:grid-cols-3 gap-8">
+            {[
+              { icon: QrCode, title: 'QR Kod Oluşturun', desc: 'Düğününüz için özel QR kod ve link oluşturulur. QR kodu indirup düğün mekanına yerleştirin.', step: '1' },
+              { icon: Upload, title: 'Misafirler Yüklesin', desc: 'Misafirleriniz QR kodu okutarak galeri sayfasına ulaşsın ve fotoğraflarını yüklesin.', step: '2' },
+              { icon: ImageIcon, title: 'Anıları Paylaşın', desc: 'Tüm fotoğraflar dijital galerinizde toplansın. İstediğiniz zaman indirin, paylaşın.', step: '3' },
+            ].map((item, i) => (
+              <motion.div key={i} variants={fadeInUp}>
+                <Card className="relative overflow-hidden hover:shadow-lg transition-all duration-300 border-0 bg-background h-full">
+                  <CardContent className="p-8 text-center">
+                    <div className="absolute top-4 right-4 text-6xl font-bold text-primary/10 font-display">{item.step}</div>
+                    <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                      <item.icon className="h-8 w-8 text-primary" />
+                    </div>
+                    <h3 className="font-display text-xl font-semibold mb-3">{item.title}</h3>
+                    <p className="text-muted-foreground text-sm leading-relaxed">{item.desc}</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section className="py-20">
+        <div className="max-w-[1200px] mx-auto px-4">
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger} className="text-center mb-16">
+            <motion.h2 variants={fadeInUp} className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-4">Neden DüğünKare?</motion.h2>
+          </motion.div>
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger} className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              { icon: QrCode, title: 'Kolay QR Erişim', desc: 'Uygulama indirmeye gerek yok' },
+              { icon: Users, title: 'Sınırsız Misafir', desc: 'Herkes yükleyebilir' },
+              { icon: Camera, title: 'Yüksek Kalite', desc: 'Orijinal çözünürlük korunur' },
+              { icon: Phone, title: 'Mobil Uyumlu', desc: 'Her cihazdan erişim' },
+            ].map((f, i) => (
+              <motion.div key={i} variants={fadeInUp}>
+                <Card className="border-0 bg-secondary/30 hover:bg-secondary/50 transition-all duration-300 h-full">
+                  <CardContent className="p-6 text-center">
+                    <f.icon className="h-8 w-8 text-primary mx-auto mb-4" />
+                    <h3 className="font-semibold mb-2">{f.title}</h3>
+                    <p className="text-sm text-muted-foreground">{f.desc}</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Pricing */}
+      <section id="paketler" className="py-20 bg-secondary/30">
+        <div className="max-w-[1200px] mx-auto px-4">
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger} className="text-center mb-16">
+            <motion.h2 variants={fadeInUp} className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-4">Paketler</motion.h2>
+            <motion.p variants={fadeInUp} className="text-muted-foreground">Düğününüze uygun paketi seçin</motion.p>
+          </motion.div>
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger} className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
+            {[
+              { name: 'Basic', price: '500 ₺', features: ['QR Kod & Link', '500 Fotoğraf Kapasitesi', '30 Gün Süreli Galeri', 'Mobil Uyumlu'], popular: false },
+              { name: 'Premium', price: '1.000 ₺', features: ['QR Kod & Link', 'Sınırsız Fotoğraf', '90 Gün Süreli Galeri', 'Video Yükleme Desteği', 'Öncelikli Destek'], popular: true },
+            ].map((pkg, i) => (
+              <motion.div key={i} variants={fadeInUp}>
+                <Card className={`relative overflow-hidden h-full border-0 ${pkg.popular ? 'ring-2 ring-primary shadow-xl' : 'shadow-md'}`}>
+                  {pkg.popular && (
+                    <div className="absolute top-0 right-0 bg-primary text-primary-foreground px-4 py-1 text-xs font-semibold rounded-bl-lg">
+                      <Star className="h-3 w-3 inline mr-1" />Popüler
+                    </div>
+                  )}
+                  <CardContent className="p-8">
+                    <h3 className="font-display text-2xl font-bold mb-2">{pkg.name}</h3>
+                    <div className="text-4xl font-bold text-primary mb-6">{pkg.price}</div>
+                    <ul className="space-y-3 mb-8">
+                      {pkg.features.map((f, j) => (
+                        <li key={j} className="flex items-center gap-2 text-sm">
+                          <CheckCircle className="h-4 w-4 text-primary flex-shrink-0" />
+                          {f}
+                        </li>
+                      ))}
+                    </ul>
+                    <Link href="/kayit">
+                      <Button className="w-full" variant={pkg.popular ? 'default' : 'outline'} size="lg">Seç ve Başla</Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Contact */}
+      <section id="iletisim" className="py-20">
+        <div className="max-w-[1200px] mx-auto px-4">
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger} className="max-w-2xl mx-auto">
+            <motion.div variants={fadeInUp} className="text-center mb-12">
+              <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-4">İletişim</h2>
+              <p className="text-muted-foreground">Sorularınız için bize ulaşın</p>
+            </motion.div>
+            <motion.div variants={fadeInUp}>
+              <Card className="border-0 shadow-lg">
+                <CardContent className="p-8">
+                  <form onSubmit={handleContact} className="space-y-4">
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium mb-1.5 block">Ad Soyad</label>
+                        <Input placeholder="Adınız" value={contactForm.name} onChange={(e) => setContactForm({...contactForm, name: e.target.value})} required />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium mb-1.5 block">Email</label>
+                        <Input type="email" placeholder="email@örnek.com" value={contactForm.email} onChange={(e) => setContactForm({...contactForm, email: e.target.value})} required />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-1.5 block">Konu</label>
+                      <Input placeholder="Konu" value={contactForm.subject} onChange={(e) => setContactForm({...contactForm, subject: e.target.value})} />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-1.5 block">Mesaj</label>
+                      <Textarea placeholder="Mesajınız..." rows={4} value={contactForm.message} onChange={(e) => setContactForm({...contactForm, message: e.target.value})} required />
+                    </div>
+                    <Button type="submit" className="w-full" size="lg" disabled={sending}>
+                      <Send className="h-4 w-4 mr-2" />
+                      {sending ? 'Gönderiliyor...' : 'Mesaj Gönder'}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-border/50 py-8 bg-secondary/20">
+        <div className="max-w-[1200px] mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <Heart className="h-5 w-5 text-primary fill-primary" />
+            <span className="font-display font-bold">DüğünKare</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
+              <Instagram className="h-5 w-5" />
+            </a>
+          </div>
+          <p className="text-sm text-muted-foreground">© 2024 DüğünKare. Tüm hakları saklıdır.</p>
+        </div>
+      </footer>
+    </div>
+  );
+}
