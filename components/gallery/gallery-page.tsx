@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Heart, Upload, Camera, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Heart, Upload, Camera, Image as ImageIcon, Loader2, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,7 @@ interface Photo {
   fileName: string;
   uploaderName: string;
   createdAt: string;
+  contentType?: string;
 }
 
 interface Wedding {
@@ -30,6 +31,8 @@ export function GalleryPage({ slug }: { slug: string }) {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [uploaderName, setUploaderName] = useState('');
+  const [likes, setLikes] = useState<Record<string, number>>({});
+  const [likedPhotos, setLikedPhotos] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const fetchWedding = async () => {
@@ -235,23 +238,49 @@ export function GalleryPage({ slug }: { slug: string }) {
             </Card>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {wedding.photos.map((photo) => (
+              {wedding.photos.map((photo) => {
+                const isVideo = photo.contentType?.startsWith('video/');
+                return (
                 <div
                   key={photo.id}
                   className="aspect-square rounded-lg overflow-hidden bg-secondary group relative"
                 >
-                  <img
-                    src={photo.url}
-                    alt={photo.fileName}
-                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                  {photo.uploaderName && (
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <p className="text-white text-xs truncate">{photo.uploaderName}</p>
-                    </div>
+                  {isVideo ? (
+                    <video
+                      src={photo.url}
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      controls
+                    />
+                  ) : (
+                    <img
+                      src={photo.url}
+                      alt={photo.fileName}
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
                   )}
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent p-3 flex items-end justify-between">
+                    <div>
+                      {photo.uploaderName && (
+                        <p className="text-white text-xs truncate mb-1">{photo.uploaderName}</p>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => {
+                        const isLiked = likedPhotos[photo.id];
+                        setLikes(prev => ({ ...prev, [photo.id]: (prev[photo.id] || 0) + (isLiked ? -1 : 1) }));
+                        setLikedPhotos(prev => ({ ...prev, [photo.id]: !isLiked }));
+                      }}
+                      className="flex items-center gap-1 transition-all duration-200 hover:scale-110"
+                    >
+                      <Heart
+                        className={`h-5 w-5 transition-all duration-200 ${likedPhotos[photo.id] ? 'text-red-500 fill-red-500 scale-110' : 'text-white fill-white/30'}`}
+                      />
+                      <span className="text-white text-xs font-medium">{likes[photo.id] || 0}</span>
+                    </button>
+                  </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
