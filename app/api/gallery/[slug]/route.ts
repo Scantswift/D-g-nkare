@@ -1,35 +1,50 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { getFileUrl } from '@/lib/s3';
+import { supabase } from '@/lib/supabase';
 
 export async function GET(req: NextRequest, { params }: { params: { slug: string } }) {
   try {
-    const wedding = await prisma.wedding.findUnique({
-      where: { slug: params?.slug },
-      include: { photos: { orderBy: { createdAt: 'desc' } } },
-    });
-    if (!wedding) return NextResponse.json({ error: 'Düğün bulunamadı' }, { status: 404 });
+    const { data: gallery, error } = await supabase
+      .from('galleries')
+      .select(`
+        *,
+        photos (*)
+      `)
+      .eq('code', params.slug)
+      .maybeSingle();
 
-    await prisma.wedding.update({ where: { id: wedding.id }, data: { viewCount: { increment: 1 } } });
+    if (error) {
+      console.error('Gallery fetch error:', error);
+      return NextResponse.json({ error: 'Galeri yüklenirken hata' }, { status: 500 });
+    }
 
-    const photosWithUrls = await Promise.all(
-      (wedding.photos ?? []).map(async (photo: any) => {
-        const url = await getFileUrl(photo.cloudStoragePath, photo.contentType, photo.isPublic);
-        return { ...photo, url };
-      })
-    );
+    if (!gallery) {
+      return NextResponse.json({ error: 'Galeri bulunamadı' }, { status: 404 });
+    }
+
+    if (!gallery.is_active) {
+      return NextResponse.json({ error: 'Bu galeri kapalı' }, { status: 403 });
+    }
+
+    const photos = (gallery.photos || []).map((photo: any) => ({
+      id: photo.id,
+      url: photo.file_url,
+      fileName: photo.file_name || '',
+      uploaderName: photo.uploader_name || '',
+      createdAt: photo.created_at,
+      contentType: photo.file_type,
+      likes: photo.likes || 0,
+    }));
 
     return NextResponse.json({
-      id: wedding.id,
-      groomName: wedding.groomName,
-      brideName: wedding.brideName,
-      weddingDate: wedding.weddingDate,
-      venue: wedding.venue,
-      slug: wedding.slug,
-      viewCount: wedding.viewCount,
-      photos: photosWithUrls,
+      id: gallery.id,
+      coupleName: gallery.couple_name,
+      weddingDate: gallery.wedding_date,
+      code: gallery.code,
+      packageType: gallery.package_type,
+      expiresAt: gallery.expires_at,
+      photos,
     });
   } catch (error: any) {
     console.error('Gallery error:', error);

@@ -15,6 +15,7 @@ interface Photo {
   uploaderName: string;
   createdAt: string;
   contentType?: string;
+  likes?: number;
 }
 
 interface Wedding {
@@ -41,6 +42,11 @@ export function GalleryPage({ slug }: { slug: string }) {
         if (res.ok) {
           const data = await res.json();
           setWedding(data);
+          const initialLikes: Record<string, number> = {};
+          (data.photos || []).forEach((p: Photo) => {
+            initialLikes[p.id] = p.likes || 0;
+          });
+          setLikes(initialLikes);
         } else {
           setWedding(null);
         }
@@ -265,10 +271,21 @@ export function GalleryPage({ slug }: { slug: string }) {
                       )}
                     </div>
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         const isLiked = likedPhotos[photo.id];
-                        setLikes(prev => ({ ...prev, [photo.id]: (prev[photo.id] || 0) + (isLiked ? -1 : 1) }));
-                        setLikedPhotos(prev => ({ ...prev, [photo.id]: !isLiked }));
+                        if (isLiked) return;
+                        setLikes(prev => ({ ...prev, [photo.id]: (prev[photo.id] || 0) + 1 }));
+                        setLikedPhotos(prev => ({ ...prev, [photo.id]: true }));
+                        try {
+                          await fetch(`/api/gallery/${slug}/like`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ photoId: photo.id }),
+                          });
+                        } catch {
+                          setLikes(prev => ({ ...prev, [photo.id]: (prev[photo.id] || 0) - 1 }));
+                          setLikedPhotos(prev => ({ ...prev, [photo.id]: false }));
+                        }
                       }}
                       className="flex items-center gap-1 transition-all duration-200 hover:scale-110"
                     >

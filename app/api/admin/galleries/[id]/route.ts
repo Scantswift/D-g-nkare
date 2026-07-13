@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { cookies } from 'next/headers';
 
 async function isAdmin(): Promise<boolean> {
@@ -16,7 +16,9 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       return NextResponse.json({ error: 'Yetkisiz' }, { status: 401 });
     }
 
-    const { error } = await supabase
+    const supabaseAdmin = getSupabaseAdmin();
+
+    const { error } = await supabaseAdmin
       .from('galleries')
       .delete()
       .eq('id', params.id);

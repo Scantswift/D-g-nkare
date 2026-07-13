@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { cookies } from 'next/headers';
 
 async function isAdmin(): Promise<boolean> {
@@ -16,7 +16,8 @@ export async function GET() {
       return NextResponse.json({ error: 'Yetkisiz' }, { status: 401 });
     }
 
-    const { data, error } = await supabase
+    const supabaseAdmin = getSupabaseAdmin();
+    const { data, error } = await supabaseAdmin
       .from('galleries')
       .select('*')
       .order('created_at', { ascending: false });
@@ -46,8 +47,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Tüm alanlar zorunlu' }, { status: 400 });
     }
 
-    // Check if code already exists
-    const { data: existing } = await supabase
+    const supabaseAdmin = getSupabaseAdmin();
+
+    const { data: existing } = await supabaseAdmin
       .from('galleries')
       .select('code')
       .eq('code', code)
@@ -57,7 +59,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Bu kod zaten kullanılıyor' }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('galleries')
       .insert({
         code,
