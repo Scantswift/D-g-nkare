@@ -7,10 +7,7 @@ export async function GET(req: NextRequest, { params }: { params: { slug: string
   try {
     const { data: gallery, error } = await supabase
       .from('galleries')
-      .select(`
-        *,
-        photos (*)
-      `)
+      .select(`*, photos (*)`)
       .eq('code', params.slug)
       .maybeSingle();
 
@@ -27,6 +24,9 @@ export async function GET(req: NextRequest, { params }: { params: { slug: string
       return NextResponse.json({ error: 'Bu galeri kapalı' }, { status: 403 });
     }
 
+    // Increment scan count (fire-and-forget)
+    supabase.rpc('increment_gallery_scan', { gallery_code: params.slug }).then(() => {});
+
     const photos = (gallery.photos || []).map((photo: any) => ({
       id: photo.id,
       url: photo.file_url,
@@ -35,6 +35,8 @@ export async function GET(req: NextRequest, { params }: { params: { slug: string
       createdAt: photo.created_at,
       contentType: photo.file_type,
       likes: photo.likes || 0,
+      isAudio: photo.is_audio || false,
+      audioUrl: photo.audio_url || null,
     }));
 
     return NextResponse.json({
@@ -43,7 +45,9 @@ export async function GET(req: NextRequest, { params }: { params: { slug: string
       weddingDate: gallery.wedding_date,
       code: gallery.code,
       packageType: gallery.package_type,
+      theme: gallery.theme || 'classic-cream',
       expiresAt: gallery.expires_at,
+      scanCount: gallery.scan_count || 0,
       photos,
     });
   } catch (error: any) {

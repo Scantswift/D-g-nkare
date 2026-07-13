@@ -19,7 +19,7 @@ export async function GET() {
     const supabaseAdmin = getSupabaseAdmin();
     const { data, error } = await supabaseAdmin
       .from('galleries')
-      .select('*')
+      .select('*, photos(count)')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { code, couple_name, wedding_date, package_type, expires_at } = body;
+    const { code, couple_name, wedding_date, package_type, expires_at, theme } = body;
 
     if (!code || !couple_name || !wedding_date || !package_type || !expires_at) {
       return NextResponse.json({ error: 'Tüm alanlar zorunlu' }, { status: 400 });
@@ -67,6 +67,7 @@ export async function POST(req: NextRequest) {
         wedding_date,
         package_type,
         expires_at,
+        theme: theme || 'classic-cream',
       })
       .select()
       .single();

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import * as React from 'react';
 import { motion } from 'framer-motion';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
@@ -129,6 +130,19 @@ const DEMO_PHOTOS = [
   { url: 'https://images.pexels.com/photos/2253842/pexels-photo-2253842.jpeg?auto=compress&cs=tinysrgb&w=600', likes: 121 },
 ];
 
+function TiltCard({ children, className }: { children: React.ReactNode; className?: string }) {
+  const [style, setStyle] = React.useState({});
+  const enter = () =>
+    setStyle({ transform: 'scale(1.03) rotateX(2deg) rotateY(-2deg)', boxShadow: '0 20px 40px rgba(0,0,0,0.12)', transition: 'all 0.25s ease' });
+  const leave = () =>
+    setStyle({ transform: 'scale(1) rotateX(0) rotateY(0)', boxShadow: '', transition: 'all 0.25s ease' });
+  return (
+    <div className={className} style={{ transformStyle: 'preserve-3d', ...style }} onMouseEnter={enter} onMouseLeave={leave} onTouchStart={enter} onTouchEnd={leave}>
+      {children}
+    </div>
+  );
+}
+
 const SCENARIOS = [
   {
     title: 'Örnek Çift 1',
@@ -187,7 +201,36 @@ export function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative overflow-x-hidden">
+      {/* Floral background texture */}
+      <div className="pointer-events-none fixed inset-0 z-0 opacity-[0.03]" aria-hidden>
+        <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="floral" x="0" y="0" width="120" height="120" patternUnits="userSpaceOnUse">
+              <g fill="hsl(350,60%,40%)">
+                <circle cx="60" cy="60" r="3"/>
+                <ellipse cx="60" cy="44" rx="5" ry="10" transform="rotate(0 60 60)"/>
+                <ellipse cx="60" cy="44" rx="5" ry="10" transform="rotate(45 60 60)"/>
+                <ellipse cx="60" cy="44" rx="5" ry="10" transform="rotate(90 60 60)"/>
+                <ellipse cx="60" cy="44" rx="5" ry="10" transform="rotate(135 60 60)"/>
+                <ellipse cx="60" cy="44" rx="5" ry="10" transform="rotate(180 60 60)"/>
+                <ellipse cx="60" cy="44" rx="5" ry="10" transform="rotate(225 60 60)"/>
+                <ellipse cx="60" cy="44" rx="5" ry="10" transform="rotate(270 60 60)"/>
+                <ellipse cx="60" cy="44" rx="5" ry="10" transform="rotate(315 60 60)"/>
+                <circle cx="10" cy="10" r="2"/>
+                <circle cx="110" cy="10" r="2"/>
+                <circle cx="10" cy="110" r="2"/>
+                <circle cx="110" cy="110" r="2"/>
+                <path d="M10 10 Q15 5 20 10 Q15 15 10 10Z"/>
+                <path d="M100 100 Q105 95 110 100 Q105 105 100 100Z"/>
+                <path d="M100 10 Q105 5 110 10 Q105 15 100 10Z"/>
+                <path d="M10 100 Q15 95 20 100 Q15 105 10 100Z"/>
+              </g>
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#floral)"/>
+        </svg>
+      </div>
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50">
         <div className="max-w-[1200px] mx-auto px-4 h-16 flex items-center justify-between">
@@ -344,6 +387,7 @@ export function LandingPage() {
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger} className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             {PACKAGES.map((pkg, i) => (
               <motion.div key={i} variants={fadeInUp}>
+                <TiltCard className="h-full">
                 <Card className={`relative overflow-hidden h-full ${pkg.highlight ? 'ring-2 ring-primary shadow-xl' : 'shadow-md'}`}>
                   {pkg.highlight && (
                     <div className="absolute top-0 right-0 bg-primary text-primary-foreground px-4 py-1 text-xs font-semibold rounded-bl-lg">
@@ -365,6 +409,7 @@ export function LandingPage() {
                     </a>
                   </CardContent>
                 </Card>
+                </TiltCard>
               </motion.div>
             ))}
           </motion.div>
@@ -547,7 +592,22 @@ export function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border/50 py-8 bg-secondary/20">
+      <footer className="border-t border-border/50 pt-8 pb-6 bg-secondary/20">
+        {/* Trust Badges */}
+        <div className="max-w-[1200px] mx-auto px-4 mb-6">
+          <div className="flex flex-wrap justify-center gap-4">
+            {[
+              { icon: '🔒', label: 'Güvenli Bağlantı (SSL)' },
+              { icon: '🛡️', label: 'KVKK Uyumlu' },
+              { icon: '🔐', label: 'Verileriniz Şifrelenir' },
+            ].map((badge) => (
+              <div key={badge.label} className="flex items-center gap-1.5 text-xs text-muted-foreground bg-secondary/50 px-3 py-1.5 rounded-full">
+                <span>{badge.icon}</span>
+                <span>{badge.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
         <div className="max-w-[1200px] mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Heart className="h-5 w-5 text-primary fill-primary" />
