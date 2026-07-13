@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import * as React from 'react';
-import { motion } from 'framer-motion';
+import { motion, useInView, useAnimation, animate } from 'framer-motion';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import {
@@ -17,6 +17,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 
+// ─── Animation variants ───────────────────────────────────────────────────────
+
 const fadeInUp = {
   hidden: { opacity: 0, y: 30 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.6 } },
@@ -26,6 +28,8 @@ const stagger = {
   visible: { transition: { staggerChildren: 0.15 } },
 };
 
+// ─── WhatsApp icon ────────────────────────────────────────────────────────────
+
 function WhatsAppIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
@@ -34,88 +38,44 @@ function WhatsAppIcon({ className }: { className?: string }) {
   );
 }
 
+// ─── Data ─────────────────────────────────────────────────────────────────────
+
 const PACKAGES = [
   {
     name: 'Basic',
-    features: [
-      'QR Kod & Galeri Linki',
-      'Sadece fotoğraf yükleme',
-      '60 gün aktif galeri',
-      'Beğeni sistemi (kalp ikonu)',
-      'Mobil uyumlu',
-    ],
+    features: ['QR Kod & Galeri Linki', 'Sadece fotoğraf yükleme', '60 gün aktif galeri', 'Beğeni sistemi (kalp ikonu)', 'Mobil uyumlu'],
     highlight: false,
   },
   {
     name: 'Premium',
-    features: [
-      'QR Kod & Galeri Linki',
-      'Fotoğraf + video yükleme (2GB video)',
-      '120 gün aktif galeri',
-      'En çok beğenilen 10-15 fotoğraftan baskı',
-      'Toplu galeri indirme (ZIP)',
-      'Özel tasarım (çift ismi/tarih ile tema)',
-      'Beğeni sistemi (kalp ikonu)',
-    ],
+    features: ['QR Kod & Galeri Linki', 'Fotoğraf + video yükleme (2GB video)', '120 gün aktif galeri', 'En çok beğenilen 10-15 fotoğraftan baskı', 'Toplu galeri indirme (ZIP)', 'Özel tasarım (çift ismi/tarih ile tema)', 'Beğeni sistemi (kalp ikonu)'],
     highlight: true,
   },
   {
     name: 'Lüks',
-    features: [
-      'QR Kod & Galeri Linki',
-      'Fotoğraf + video yükleme (5GB video)',
-      '200 gün aktif galeri',
-      'En çok beğenilen fotoğraflardan kolaj/tablo baskısı',
-      'Toplu galeri indirme (ZIP)',
-      'Özel tasarım + öncelikli hizmet',
-      'Beğeni sistemi (kalp ikonu)',
-    ],
+    features: ['QR Kod & Galeri Linki', 'Fotoğraf + video yükleme (5GB video)', '200 gün aktif galeri', 'En çok beğenilen fotoğraflardan kolaj/tablo baskısı', 'Toplu galeri indirme (ZIP)', 'Özel tasarım + öncelikli hizmet', 'Beğeni sistemi (kalp ikonu)'],
     highlight: false,
   },
 ];
 
 const COMPARISON_ROWS = [
-  { label: 'Medya türü', basic: 'Fotoğraf', premium: 'Fotoğraf + Video', luks: 'Fotoğraf + Video' },
-  { label: 'Aktif kalma süresi', basic: '60 gün', premium: '120 gün', luks: '200 gün' },
-  { label: 'Beğeni sistemi', basic: 'Var', premium: 'Var', luks: 'Var' },
-  { label: 'Fiziksel baskı', basic: 'Yok', premium: '10-15 fotoğraf baskısı', luks: 'Kolaj/tablo baskısı' },
-  { label: 'Toplu indirme (ZIP)', basic: 'Yok', premium: 'Var', luks: 'Var' },
-  { label: 'Özel tasarım', basic: 'Yok', premium: 'Var', luks: 'Var + öncelikli' },
+  { label: 'Medya türü',          basic: 'Fotoğraf',  premium: 'Fotoğraf + Video',        luks: 'Fotoğraf + Video' },
+  { label: 'Aktif kalma süresi',  basic: '60 gün',    premium: '120 gün',                 luks: '200 gün' },
+  { label: 'Beğeni sistemi',      basic: 'Var',        premium: 'Var',                     luks: 'Var' },
+  { label: 'Fiziksel baskı',      basic: 'Yok',        premium: '10-15 fotoğraf baskısı',  luks: 'Kolaj/tablo baskısı' },
+  { label: 'Toplu indirme (ZIP)', basic: 'Yok',        premium: 'Var',                     luks: 'Var' },
+  { label: 'Özel tasarım',        basic: 'Yok',        premium: 'Var',                     luks: 'Var + öncelikli' },
 ];
 
 const FAQ_ITEMS = [
-  {
-    q: 'QR Kod nasıl çalışır?',
-    a: 'Düğününüz için size özel bir QR kod ve galeri linki oluşturuyoruz. Bu QR kodu düğün mekanınıza yerleştiriyorsunuz. Misafirleriniz telefonlarıyla QR kodu okutarak galeriye anında erişiyor, çektikleri fotoğraf ve videoları doğrudan yükleyebiliyorlar.',
-  },
-  {
-    q: 'Neden dijital fotoğraf albümü?',
-    a: 'Düğününüzde misafirlerinizin telefonunda dağınık kalan, sizinle paylaşılmayan yüzlerce özel an var. Dijital galeri sayesinde bu anıların hepsi tek bir yerde, kolayca toplanır.',
-  },
-  {
-    q: 'Paket satın aldıktan sonra süreç nasıl işliyor?',
-    a: 'Bize ulaştıktan sonra size özel galeri linkiniz ve QR kodunuz oluşturulur. İsterseniz 2-3 iş günü içinde hızlıca teslim alabilir, isterseniz düğününüzden 1 hafta önce QR baskılı pleksileriniz hazırlanıp gönderilebilir.',
-  },
-  {
-    q: 'Galeri ne kadar süre aktif kalıyor?',
-    a: 'Pakete göre değişir: Basic 60 gün, Premium 120 gün, Lüks 200 gün.',
-  },
-  {
-    q: 'Fotoğraf/video yükleme limiti var mı?',
-    a: 'Evet, her paketin kendine özel bir galeri kapasitesi bulunuyor. Basic sadece fotoğraf, Premium ve Lüks fotoğraf + video destekler.',
-  },
-  {
-    q: 'Baskı çıktıları ne zaman elime ulaşır?',
-    a: 'Galeriniz aktifken, düğün sonrası belirli bir süre içinde en çok beğenilen fotoğraflarınız seçilerek bastırılır ve size gönderilir.',
-  },
-  {
-    q: 'Ödeme nasıl yapılıyor?',
-    a: 'Şu an için ödemeler havale/EFT yöntemiyle alınmaktadır.',
-  },
-  {
-    q: 'Düğün sonrası galerimi indirebilir miyim?',
-    a: 'Premium ve Lüks paketlerde toplu indirme (ZIP) özelliği bulunur, tüm fotoğraf ve videolarınızı indirebilirsiniz.',
-  },
+  { q: 'QR Kod nasıl çalışır?',                     a: 'Düğününüz için size özel bir QR kod ve galeri linki oluşturuyoruz. Bu QR kodu düğün mekanınıza yerleştiriyorsunuz. Misafirleriniz telefonlarıyla QR kodu okutarak galeriye anında erişiyor, çektikleri fotoğraf ve videoları doğrudan yükleyebiliyorlar.' },
+  { q: 'Neden dijital fotoğraf albümü?',             a: 'Düğününüzde misafirlerinizin telefonunda dağınık kalan, sizinle paylaşılmayan yüzlerce özel an var. Dijital galeri sayesinde bu anıların hepsi tek bir yerde, kolayca toplanır.' },
+  { q: 'Paket satın aldıktan sonra süreç nasıl işliyor?', a: 'Bize ulaştıktan sonra size özel galeri linkiniz ve QR kodunuz oluşturulur. İsterseniz 2-3 iş günü içinde hızlıca teslim alabilir, isterseniz düğününüzden 1 hafta önce QR baskılı pleksileriniz hazırlanıp gönderilebilir.' },
+  { q: 'Galeri ne kadar süre aktif kalıyor?',        a: 'Pakete göre değişir: Basic 60 gün, Premium 120 gün, Lüks 200 gün.' },
+  { q: 'Fotoğraf/video yükleme limiti var mı?',      a: 'Evet, her paketin kendine özel bir galeri kapasitesi bulunuyor. Basic sadece fotoğraf, Premium ve Lüks fotoğraf + video destekler.' },
+  { q: 'Baskı çıktıları ne zaman elime ulaşır?',    a: 'Galeriniz aktifken, düğün sonrası belirli bir süre içinde en çok beğenilen fotoğraflarınız seçilerek bastırılır ve size gönderilir.' },
+  { q: 'Ödeme nasıl yapılıyor?',                     a: 'Şu an için ödemeler havale/EFT yöntemiyle alınmaktadır.' },
+  { q: 'Düğün sonrası galerimi indirebilir miyim?',  a: 'Premium ve Lüks paketlerde toplu indirme (ZIP) özelliği bulunur, tüm fotoğraf ve videolarınızı indirebilirsiniz.' },
 ];
 
 const DEMO_PHOTOS = [
@@ -130,6 +90,14 @@ const DEMO_PHOTOS = [
   { url: 'https://images.pexels.com/photos/2253842/pexels-photo-2253842.jpeg?auto=compress&cs=tinysrgb&w=600', likes: 121 },
 ];
 
+const SCENARIOS = [
+  { title: 'Örnek Çift 1', detail: '150 misafir, 400\'den fazla fotoğraf, düğün sonunda toplu galeri indirmesi. Misafirler QR kodu okutarak anında galeriye katkıda bulundu.' },
+  { title: 'Örnek Çift 2', detail: '200 misafirli büyük bir düğün. Video ve fotoğraf karışık yüklendi, en çok beğenilen 15 fotoğraf seçilip bastırıldı ve çifte gönderildi.' },
+  { title: 'Örnek Çift 3', detail: '80 misafirli samimi bir tören. Özel tasarım galeri teması ile çift isimleri ve tarihleri galeriye entegre edildi. Kolaj baskısı ile duvarda yerini aldı.' },
+];
+
+// ─── TiltCard ─────────────────────────────────────────────────────────────────
+
 function TiltCard({ children, className }: { children: React.ReactNode; className?: string }) {
   const [style, setStyle] = React.useState({});
   const enter = () =>
@@ -143,30 +111,198 @@ function TiltCard({ children, className }: { children: React.ReactNode; classNam
   );
 }
 
-const SCENARIOS = [
-  {
-    title: 'Örnek Çift 1',
-    detail: '150 misafir, 400\'den fazla fotoğraf, düğün sonunda toplu galeri indirmesi. Misafirler QR kodu okutarak anında galeriye katkıda bulundu.',
-  },
-  {
-    title: 'Örnek Çift 2',
-    detail: '200 misafirli büyük bir düğün. Video ve fotoğraf karışık yüklendi, en çok beğenilen 15 fotoğraf seçilip bastırıldı ve çifte gönderildi.',
-  },
-  {
-    title: 'Örnek Çift 3',
-    detail: '80 misafirli samimi bir tören. Özel tasarım galeri teması ile çift isimleri ve tarihleri galeriye entegre edildi. Kolaj baskısı ile duvarda yerini aldı.',
-  },
-];
+// ─── MagneticButton ───────────────────────────────────────────────────────────
+// Desktop-only: button drifts up to 9px toward the cursor, snaps back on leave.
+
+function MagneticButton({ children, className, href, variant, size, type, disabled, onClick }: {
+  children: React.ReactNode;
+  className?: string;
+  href?: string;
+  variant?: 'default' | 'outline' | 'ghost';
+  size?: 'default' | 'lg' | 'sm';
+  type?: 'button' | 'submit';
+  disabled?: boolean;
+  onClick?: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = React.useState({ x: 0, y: 0 });
+  const [isTouchDevice, setIsTouchDevice] = React.useState(true);
+
+  useEffect(() => {
+    setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
+  }, []);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isTouchDevice || !ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const dx = (e.clientX - cx) / (rect.width / 2);
+    const dy = (e.clientY - cy) / (rect.height / 2);
+    setPos({ x: dx * 9, y: dy * 9 });
+  };
+  const handleMouseLeave = () => setPos({ x: 0, y: 0 });
+
+  const inner = (
+    <Button variant={variant} size={size} type={type} disabled={disabled} onClick={onClick} className={className}>
+      {children}
+    </Button>
+  );
+
+  const wrapper = (
+    <div
+      ref={ref}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      style={{ display: 'inline-block', transform: `translate(${pos.x}px, ${pos.y}px)`, transition: pos.x === 0 && pos.y === 0 ? 'transform 0.35s cubic-bezier(.23,1,.32,1)' : 'transform 0.12s ease-out' }}
+    >
+      {inner}
+    </div>
+  );
+
+  if (href) {
+    return <a href={href}>{wrapper}</a>;
+  }
+  return wrapper;
+}
+
+// ─── AnimatedWord — splits text into words, staggers fade-up ─────────────────
+
+function AnimatedHeadline({ text, highlight, className }: { text: string; highlight?: string; className?: string }) {
+  const words = text.split(' ');
+  const highlightWords = highlight ? highlight.split(' ') : [];
+
+  return (
+    <h1 className={className}>
+      {words.map((word, i) => {
+        const isHighlight = highlightWords.length > 0 && highlight && text.indexOf(highlight) !== -1 &&
+          i >= words.indexOf(highlightWords[0]) && i <= words.indexOf(highlightWords[highlightWords.length - 1]);
+        return (
+          <motion.span
+            key={i}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, delay: 0.1 + i * 0.07, ease: [0.22, 1, 0.36, 1] }}
+            className={`inline-block mr-[0.25em] ${isHighlight ? 'text-primary' : ''}`}
+          >
+            {word}
+          </motion.span>
+        );
+      })}
+    </h1>
+  );
+}
+
+// ─── ScrollStoryLine — "Nasıl Çalışır" bölümündeki dolma çizgi ───────────────
+
+function ScrollStoryLine({ stepCount }: { stepCount: number }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [fillPct, setFillPct] = React.useState(0);
+
+  useEffect(() => {
+    const onScroll = () => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const windowH = window.innerHeight;
+      // Progress: 0 when top of section hits bottom of viewport, 1 when bottom hits top
+      const progress = Math.min(1, Math.max(0, (windowH - rect.top) / (rect.height + windowH * 0.3)));
+      setFillPct(progress * 100);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  return (
+    <div ref={containerRef} className="hidden md:flex absolute left-1/2 -translate-x-1/2 top-0 bottom-0 flex-col items-center pointer-events-none" style={{ width: 2, zIndex: 0 }}>
+      {/* Track */}
+      <div className="absolute inset-0 bg-border/30 rounded-full" />
+      {/* Fill */}
+      <div
+        className="absolute top-0 left-0 right-0 rounded-full bg-primary/50 transition-none"
+        style={{ height: `${fillPct}%` }}
+      />
+    </div>
+  );
+}
+
+// ─── AnimatedLogoHeart — wiggle idle + occasional scroll drift ────────────────
+
+function AnimatedLogoHeart() {
+  const [wiggle, setWiggle] = React.useState(false);
+  const [drift, setDrift] = React.useState({ x: 0, y: 0 });
+  const driftActiveRef = useRef(false);
+  const lastScrollRef = useRef(0);
+  const scrollCountRef = useRef(0);
+
+  // Idle wiggle every 8–12 s
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    const schedule = () => {
+      const delay = 8000 + Math.random() * 4000;
+      timer = setTimeout(() => {
+        setWiggle(true);
+        setTimeout(() => { setWiggle(false); schedule(); }, 1200);
+      }, delay);
+    };
+    schedule();
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Scroll drift — ~30% probability, throttled
+  useEffect(() => {
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking || driftActiveRef.current) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        ticking = false;
+        const currentScroll = window.scrollY;
+        if (Math.abs(currentScroll - lastScrollRef.current) < 80) return;
+        lastScrollRef.current = currentScroll;
+        scrollCountRef.current += 1;
+        // ~30% chance on every qualifying scroll event
+        if (Math.random() > 0.3) return;
+        driftActiveRef.current = true;
+        const x = (Math.random() - 0.5) * 14; // ±7px
+        const y = (Math.random() - 0.5) * 10; // ±5px
+        setDrift({ x, y });
+        setTimeout(() => {
+          setDrift({ x: 0, y: 0 });
+          setTimeout(() => { driftActiveRef.current = false; }, 500);
+        }, 900);
+      });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  return (
+    <motion.div
+      animate={
+        wiggle
+          ? { rotate: [0, -8, 8, -5, 5, -2, 2, 0], scale: [1, 1.1, 1.1, 1.05, 1.05, 1.02, 1.02, 1] }
+          : { rotate: 0, x: drift.x, y: drift.y, scale: 1 }
+      }
+      transition={
+        wiggle
+          ? { duration: 1.0, ease: 'easeInOut' }
+          : { duration: drift.x !== 0 || drift.y !== 0 ? 0.6 : 0.45, ease: [0.23, 1, 0.32, 1] }
+      }
+      style={{ display: 'inline-flex' }}
+    >
+      <Heart className="h-6 w-6 text-primary fill-primary" />
+    </motion.div>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export function LandingPage() {
   const { data: session } = useSession() || {};
   const [contactForm, setContactForm] = useState({ name: '', email: '', subject: '', message: '' });
   const [sending, setSending] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
-  const [demoLikes, setDemoLikes] = useState<Record<number, number>>(
-    DEMO_PHOTOS.map((p, i) => ({ [i]: p.likes })).reduce((a, b) => ({ ...a, ...b }), {})
-  );
-  const [demoLiked, setDemoLiked] = useState<Record<number, boolean>>({});
 
   const handleContact = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -190,15 +326,11 @@ export function LandingPage() {
     }
   };
 
-  const toggleDemoLike = (idx: number) => {
-    if (demoLiked[idx]) {
-      setDemoLikes(prev => ({ ...prev, [idx]: prev[idx] - 1 }));
-      setDemoLiked(prev => ({ ...prev, [idx]: false }));
-    } else {
-      setDemoLikes(prev => ({ ...prev, [idx]: prev[idx] + 1 }));
-      setDemoLiked(prev => ({ ...prev, [idx]: true }));
-    }
-  };
+  const HOW_STEPS = [
+    { icon: QrCode,    title: 'QR Kod Oluşturun',   desc: 'Düğününüz için özel QR kod ve link oluşturulur. QR kodu indirip düğün mekanına yerleştirin.',                                step: '1' },
+    { icon: Upload,    title: 'Misafirler Yüklesin', desc: 'Misafirleriniz QR kodu okutarak galeri sayfasına ulaşsın ve fotoğraflarını yüklesin.',                                       step: '2' },
+    { icon: ImageIcon, title: 'Anıları Paylaşın',   desc: 'Tüm fotoğraflar dijital galerinizde toplansın. İstediğiniz zaman indirin, paylaşın.',                                         step: '3' },
+  ];
 
   return (
     <div className="min-h-screen bg-background relative overflow-x-hidden">
@@ -231,18 +363,19 @@ export function LandingPage() {
           <rect width="100%" height="100%" fill="url(#floral)"/>
         </svg>
       </div>
-      {/* Header */}
+
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50">
         <div className="max-w-[1200px] mx-auto px-4 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <Heart className="h-6 w-6 text-primary fill-primary" />
+            <AnimatedLogoHeart />
             <span className="font-display text-xl font-bold tracking-tight">DüğünKare</span>
           </Link>
           <nav className="hidden md:flex items-center gap-6">
             <a href="#nasil-calisir" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Nasıl Çalışır?</a>
-            <a href="#demo-galeri" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Örnek Galeri</a>
-            <a href="#paketler" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Paketler</a>
-            <a href="#iletisim" className="text-sm text-muted-foreground hover:text-foreground transition-colors">İletişim</a>
+            <a href="#demo-galeri"   className="text-sm text-muted-foreground hover:text-foreground transition-colors">Örnek Galeri</a>
+            <a href="#paketler"      className="text-sm text-muted-foreground hover:text-foreground transition-colors">Paketler</a>
+            <a href="#iletisim"      className="text-sm text-muted-foreground hover:text-foreground transition-colors">İletişim</a>
           </nav>
           <div className="flex items-center gap-3">
             {session && (
@@ -254,73 +387,94 @@ export function LandingPage() {
         </div>
       </header>
 
-      {/* Hero */}
+      {/* ── Hero ───────────────────────────────────────────────────────────── */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-secondary/30" />
         <div className="max-w-[1200px] mx-auto px-4 py-24 md:py-32 relative">
-          <motion.div initial="hidden" animate="visible" variants={stagger} className="text-center max-w-3xl mx-auto">
-            <motion.div variants={fadeInUp} className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-1.5 rounded-full text-sm font-medium mb-6">
+          <div className="text-center max-w-3xl mx-auto">
+            {/* Badge */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.05 }}
+              className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-1.5 rounded-full text-sm font-medium mb-6"
+            >
               <Camera className="h-4 w-4" />
               Düğün fotoğraf paylaşımında yeni nesil
             </motion.div>
-            <motion.h1 variants={fadeInUp} className="font-display text-4xl md:text-6xl font-bold tracking-tight mb-6">
-              Düğününüzde Çekilen Tüm Fotoğraflar <span className="text-primary">Tek Yerde</span>
-            </motion.h1>
-            <motion.p variants={fadeInUp} className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
+
+            {/* Headline — word-by-word fade-up, total ~1.1 s */}
+            <AnimatedHeadline
+              text="Düğününüzde Çekilen Tüm Fotoğraflar Tek Yerde"
+              highlight="Tek Yerde"
+              className="font-display text-4xl md:text-6xl font-bold tracking-tight mb-6 leading-tight"
+            />
+
+            <motion.p
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.7 }}
+              className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto"
+            >
               QR kod ile misafirleriniz düğün fotoğraflarını kolayca yüklesin. Tüm anılarınız dijital bir galeride toplansın.
             </motion.p>
-            <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row gap-4 justify-center">
-              <a href="#paketler">
-                <Button size="lg" className="text-base px-8">
-                  Paketleri İncele <ArrowRight className="h-5 w-5 ml-2" />
-                </Button>
-              </a>
-              <a href="#nasil-calisir">
-                <Button variant="outline" size="lg" className="text-base px-8">
-                  Nasıl Çalışır?
-                </Button>
-              </a>
+
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.85 }}
+              className="flex flex-col sm:flex-row gap-4 justify-center"
+            >
+              <MagneticButton href="#paketler" size="lg" className="text-base px-8">
+                Paketleri İncele <ArrowRight className="h-5 w-5 ml-2" />
+              </MagneticButton>
+              <MagneticButton href="#nasil-calisir" variant="outline" size="lg" className="text-base px-8">
+                Nasıl Çalışır?
+              </MagneticButton>
             </motion.div>
-          </motion.div>
+          </div>
         </div>
       </section>
 
-      {/* How it works */}
+      {/* ── How it works ───────────────────────────────────────────────────── */}
       <section id="nasil-calisir" className="py-20 bg-secondary/30">
         <div className="max-w-[1200px] mx-auto px-4">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger} className="text-center mb-16">
             <motion.h2 variants={fadeInUp} className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-4">Nasıl Çalışır?</motion.h2>
             <motion.p variants={fadeInUp} className="text-muted-foreground max-w-xl mx-auto">Sadece 3 adımda düğün fotoğraflarınızı toplayın</motion.p>
           </motion.div>
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger} className="grid md:grid-cols-3 gap-8">
-            {[
-              { icon: QrCode, title: 'QR Kod Oluşturun', desc: 'Düğününüz için özel QR kod ve link oluşturulur. QR kodu indirup düğün mekanına yerleştirin.', step: '1' },
-              { icon: Upload, title: 'Misafirler Yüklesin', desc: 'Misafirleriniz QR kodu okutarak galeri sayfasına ulaşsın ve fotoğraflarını yüklesin.', step: '2' },
-              { icon: ImageIcon, title: 'Anıları Paylaşın', desc: 'Tüm fotoğraflar dijital galerinizde toplansın. İstediğiniz zaman indirin, paylaşın.', step: '3' },
-            ].map((item, i) => (
-              <motion.div key={i} variants={fadeInUp}>
-                <Card className="relative overflow-hidden hover:shadow-lg transition-all duration-300 border-0 bg-background h-full">
-                  <CardContent className="p-8 text-center">
-                    <div className="absolute top-4 right-4 text-6xl font-bold text-primary/10 font-display">{item.step}</div>
-                    <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                      <item.icon className="h-8 w-8 text-primary" />
-                    </div>
-                    <h3 className="font-display text-xl font-semibold mb-3">{item.title}</h3>
-                    <p className="text-muted-foreground text-sm leading-relaxed">{item.desc}</p>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </motion.div>
+
+          {/* Steps with scroll story line */}
+          <div className="relative">
+            <ScrollStoryLine stepCount={HOW_STEPS.length} />
+            <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger} className="grid md:grid-cols-3 gap-8 relative z-10">
+              {HOW_STEPS.map((item, i) => (
+                <motion.div key={i} variants={fadeInUp}>
+                  <Card className="relative overflow-hidden hover:shadow-lg transition-all duration-300 border-0 bg-background h-full">
+                    <CardContent className="p-8 text-center">
+                      <div className="absolute top-4 right-4 text-6xl font-bold text-primary/10 font-display">{item.step}</div>
+                      <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                        <item.icon className="h-8 w-8 text-primary" />
+                      </div>
+                      <h3 className="font-display text-xl font-semibold mb-3">{item.title}</h3>
+                      <p className="text-muted-foreground text-sm leading-relaxed">{item.desc}</p>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </motion.div>
+          </div>
         </div>
       </section>
 
-      {/* Demo Gallery */}
+      {/* ── Demo Gallery ───────────────────────────────────────────────────── */}
       <section id="demo-galeri" className="py-20">
         <div className="max-w-[1200px] mx-auto px-4">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger} className="text-center mb-16">
             <motion.h2 variants={fadeInUp} className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-4">Galeriniz Böyle Görünecek</motion.h2>
-            <motion.p variants={fadeInUp} className="text-muted-foreground max-w-xl mx-auto">Misafirlerinizin yüklediği fotoğraflar bu şekilde görüntülenecek. Kalp ikonuna tıklayarak beğeni bırakabilirsiniz.</motion.p>
+            <motion.p variants={fadeInUp} className="text-muted-foreground max-w-xl mx-auto">
+              Misafirlerinizin yüklediği fotoğraflar bu şekilde görüntülenecek.
+            </motion.p>
           </motion.div>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {DEMO_PHOTOS.map((photo, i) => (
@@ -330,19 +484,17 @@ export function LandingPage() {
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.4, delay: i * 0.05 }}
-                className="aspect-square rounded-xl overflow-hidden bg-secondary group relative cursor-pointer"
-                onClick={() => toggleDemoLike(i)}
+                className="aspect-square rounded-xl overflow-hidden bg-secondary relative"
               >
                 <img
                   src={photo.url}
                   alt="Örnek düğün fotoğrafı"
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                  className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
                 />
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent p-4 flex items-center gap-2">
-                  <Heart
-                    className={`h-6 w-6 transition-all duration-200 ${demoLiked[i] ? 'text-red-500 fill-red-500 scale-110' : 'text-white fill-white/30'}`}
-                  />
-                  <span className="text-white text-sm font-medium">{demoLikes[i]}</span>
+                {/* Static like badge — not interactive, just decorative */}
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent p-4 flex items-center gap-2 pointer-events-none select-none">
+                  <Heart className="h-6 w-6 text-white fill-white/60" />
+                  <span className="text-white text-sm font-medium">{photo.likes}</span>
                 </div>
               </motion.div>
             ))}
@@ -350,7 +502,7 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* Features */}
+      {/* ── Features ───────────────────────────────────────────────────────── */}
       <section className="py-20 bg-secondary/30">
         <div className="max-w-[1200px] mx-auto px-4">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger} className="text-center mb-16">
@@ -358,10 +510,10 @@ export function LandingPage() {
           </motion.div>
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger} className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { icon: QrCode, title: 'Kolay QR Erişim', desc: 'Uygulama indirmeye gerek yok' },
-              { icon: Users, title: 'Sınırsız Misafir', desc: 'Herkes yükleyebilir' },
-              { icon: Camera, title: 'Yüksek Kalite', desc: 'Orijinal çözünürlük korunur' },
-              { icon: Phone, title: 'Mobil Uyumlu', desc: 'Her cihazdan erişim' },
+              { icon: QrCode,    title: 'Kolay QR Erişim', desc: 'Uygulama indirmeye gerek yok' },
+              { icon: Users,     title: 'Sınırsız Misafir', desc: 'Herkes yükleyebilir' },
+              { icon: Camera,    title: 'Yüksek Kalite',   desc: 'Orijinal çözünürlük korunur' },
+              { icon: Phone,     title: 'Mobil Uyumlu',    desc: 'Her cihazdan erişim' },
             ].map((f, i) => (
               <motion.div key={i} variants={fadeInUp}>
                 <Card className="border-0 bg-background hover:bg-secondary/50 transition-all duration-300 h-full">
@@ -377,7 +529,7 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* Pricing */}
+      {/* ── Pricing ────────────────────────────────────────────────────────── */}
       <section id="paketler" className="py-20">
         <div className="max-w-[1200px] mx-auto px-4">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger} className="text-center mb-16">
@@ -388,40 +540,34 @@ export function LandingPage() {
             {PACKAGES.map((pkg, i) => (
               <motion.div key={i} variants={fadeInUp}>
                 <TiltCard className="h-full">
-                <Card className={`relative overflow-hidden h-full ${pkg.highlight ? 'ring-2 ring-primary shadow-xl' : 'shadow-md'}`}>
-                  {pkg.highlight && (
-                    <div className="absolute top-0 right-0 bg-primary text-primary-foreground px-4 py-1 text-xs font-semibold rounded-bl-lg">
-                      <Star className="h-3 w-3 inline mr-1" />Popüler
-                    </div>
-                  )}
-                  <CardContent className="p-8">
-                    <h3 className="font-display text-2xl font-bold mb-2">{pkg.name}</h3>
-                    <ul className="space-y-3 mb-8">
-                      {pkg.features.map((f, j) => (
-                        <li key={j} className="flex items-start gap-2 text-sm">
-                          <CheckCircle className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
-                          {f}
-                        </li>
-                      ))}
-                    </ul>
-                    <a href="#iletisim">
-                      <Button className="w-full" variant={pkg.highlight ? 'default' : 'outline'} size="lg">Bize Ulaşın</Button>
-                    </a>
-                  </CardContent>
-                </Card>
+                  <Card className={`relative overflow-hidden h-full ${pkg.highlight ? 'ring-2 ring-primary shadow-xl' : 'shadow-md'}`}>
+                    {pkg.highlight && (
+                      <div className="absolute top-0 right-0 bg-primary text-primary-foreground px-4 py-1 text-xs font-semibold rounded-bl-lg">
+                        <Star className="h-3 w-3 inline mr-1" />Popüler
+                      </div>
+                    )}
+                    <CardContent className="p-8">
+                      <h3 className="font-display text-2xl font-bold mb-2">{pkg.name}</h3>
+                      <ul className="space-y-3 mb-8">
+                        {pkg.features.map((f, j) => (
+                          <li key={j} className="flex items-start gap-2 text-sm">
+                            <CheckCircle className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                            {f}
+                          </li>
+                        ))}
+                      </ul>
+                      <MagneticButton href="#iletisim" variant={pkg.highlight ? 'default' : 'outline'} size="lg" className="w-full">
+                        Bize Ulaşın
+                      </MagneticButton>
+                    </CardContent>
+                  </Card>
                 </TiltCard>
               </motion.div>
             ))}
           </motion.div>
 
           {/* Comparison Table */}
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            variants={fadeInUp}
-            className="mt-16 max-w-4xl mx-auto"
-          >
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp} className="mt-16 max-w-4xl mx-auto">
             <Card className="overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -450,16 +596,12 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* Örnek Senaryo */}
+      {/* ── Scenarios ──────────────────────────────────────────────────────── */}
       <section className="py-20 bg-secondary/30">
         <div className="max-w-[1200px] mx-auto px-4">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger} className="text-center mb-12">
-            <motion.h2 variants={fadeInUp} className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-4">
-              Düğünkare ile Bir Düğün Böyle Geçer
-            </motion.h2>
-            <motion.p variants={fadeInUp} className="text-sm text-muted-foreground max-w-xl mx-auto">
-              Aşağıdaki örnek, Düğünkare deneyiminin nasıl işlediğini göstermek amacıyla hazırlanmıştır.
-            </motion.p>
+            <motion.h2 variants={fadeInUp} className="font-display text-3xl md:text-4xl font-bold tracking-tight mb-4">Düğünkare ile Bir Düğün Böyle Geçer</motion.h2>
+            <motion.p variants={fadeInUp} className="text-sm text-muted-foreground max-w-xl mx-auto">Aşağıdaki örnek, Düğünkare deneyiminin nasıl işlediğini göstermek amacıyla hazırlanmıştır.</motion.p>
           </motion.div>
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger} className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {SCENARIOS.map((s, i) => (
@@ -479,7 +621,7 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* Contact */}
+      {/* ── Contact ────────────────────────────────────────────────────────── */}
       <section id="iletisim" className="py-20">
         <div className="max-w-[800px] mx-auto px-4">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger} className="text-center mb-12">
@@ -487,15 +629,10 @@ export function LandingPage() {
             <motion.p variants={fadeInUp} className="text-muted-foreground">Sorularınız için bize ulaşın</motion.p>
           </motion.div>
 
-          {/* WhatsApp & Instagram buttons */}
+          {/* WhatsApp & Instagram */}
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger} className="grid sm:grid-cols-2 gap-4 mb-12">
             <motion.div variants={fadeInUp}>
-              <a
-                href="https://wa.me/900000000000"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block"
-              >
+              <a href="https://wa.me/900000000000" target="_blank" rel="noopener noreferrer" className="block">
                 <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group bg-[#25D366]/5 hover:bg-[#25D366]/10">
                   <CardContent className="p-6 flex items-center gap-4">
                     <div className="w-14 h-14 rounded-2xl bg-[#25D366] flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
@@ -510,12 +647,7 @@ export function LandingPage() {
               </a>
             </motion.div>
             <motion.div variants={fadeInUp}>
-              <a
-                href="https://instagram.com/dugunkare"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block"
-              >
+              <a href="https://instagram.com/dugunkare" target="_blank" rel="noopener noreferrer" className="block">
                 <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group bg-[#E1306F]/5 hover:bg-[#E1306F]/10">
                   <CardContent className="p-6 flex items-center gap-4">
                     <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#F58529] via-[#DD2A7B] to-[#8134AF] flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
@@ -531,23 +663,18 @@ export function LandingPage() {
             </motion.div>
           </motion.div>
 
-          {/* FAQ / SSS */}
+          {/* FAQ */}
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger} className="mb-12">
             <motion.h3 variants={fadeInUp} className="font-display text-2xl font-bold tracking-tight mb-6 text-center">Sık Sorulan Sorular</motion.h3>
             <div className="space-y-3">
               {FAQ_ITEMS.map((item, i) => (
                 <motion.div key={i} variants={fadeInUp}>
                   <Card className={`overflow-hidden transition-all duration-300 ${openFaq === i ? 'shadow-md ring-1 ring-primary/20' : 'shadow-sm'}`}>
-                    <button
-                      onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                      className="w-full text-left p-4 flex items-center justify-between gap-4"
-                    >
+                    <button onClick={() => setOpenFaq(openFaq === i ? null : i)} className="w-full text-left p-4 flex items-center justify-between gap-4">
                       <span className="font-medium text-sm">{item.q}</span>
                       <ChevronDown className={`h-5 w-5 text-muted-foreground flex-shrink-0 transition-transform duration-300 ${openFaq === i ? 'rotate-180' : ''}`} />
                     </button>
-                    <div
-                      className={`overflow-hidden transition-all duration-300 ${openFaq === i ? 'max-h-60' : 'max-h-0'}`}
-                    >
+                    <div className={`overflow-hidden transition-all duration-300 ${openFaq === i ? 'max-h-60' : 'max-h-0'}`}>
                       <p className="px-4 pb-4 text-sm text-muted-foreground leading-relaxed">{item.a}</p>
                     </div>
                   </Card>
@@ -556,7 +683,7 @@ export function LandingPage() {
             </div>
           </motion.div>
 
-          {/* Contact form (secondary) */}
+          {/* Contact form */}
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeInUp}>
             <Card className="border-0 shadow-sm bg-secondary/30">
               <CardContent className="p-6">
@@ -580,10 +707,10 @@ export function LandingPage() {
                     <label className="text-sm font-medium mb-1.5 block">Mesaj</label>
                     <Textarea placeholder="Mesajınız..." rows={4} value={contactForm.message} onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })} required />
                   </div>
-                  <Button type="submit" className="w-full" size="lg" disabled={sending}>
+                  <MagneticButton type="submit" className="w-full" size="lg" disabled={sending}>
                     <Send className="h-4 w-4 mr-2" />
                     {sending ? 'Gönderiliyor...' : 'Mesaj Gönder'}
-                  </Button>
+                  </MagneticButton>
                 </form>
               </CardContent>
             </Card>
@@ -591,9 +718,8 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* Footer */}
+      {/* ── Footer ─────────────────────────────────────────────────────────── */}
       <footer className="border-t border-border/50 pt-8 pb-6 bg-secondary/20">
-        {/* Trust Badges */}
         <div className="max-w-[1200px] mx-auto px-4 mb-6">
           <div className="flex flex-wrap justify-center gap-4">
             {[
@@ -614,9 +740,7 @@ export function LandingPage() {
             <span className="font-display font-bold">DüğünKare</span>
           </div>
           <div className="flex items-center gap-6">
-            <Link href="/kvkk" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-              KVKK / Gizlilik Politikası
-            </Link>
+            <Link href="/kvkk" className="text-sm text-muted-foreground hover:text-primary transition-colors">KVKK / Gizlilik Politikası</Link>
             <a href="https://instagram.com/dugunkare" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
               <Instagram className="h-5 w-5" />
             </a>
